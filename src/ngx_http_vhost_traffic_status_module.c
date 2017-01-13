@@ -78,7 +78,7 @@
 #if (NGX_HTTP_CACHE)
 #define NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_SERVER "\"%V\":{"               \
     "\"requestCounter\":%uA,"                                                  \
-    "\"sumRequestTimes\":%uA,"                                                 \
+    "\"requestTime\":%uA,"                                                     \
     "\"inBytes\":%uA,"                                                         \
     "\"outBytes\":%uA,"                                                        \
     "\"responses\":{"                                                          \
@@ -119,7 +119,7 @@
 #else
 #define NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_SERVER "\"%V\":{"               \
     "\"requestCounter\":%uA,"                                                  \
-    "\"sumRequestTimes\":%uA,"                                                 \
+    "\"requestTime\":%uA,"                                                     \
     "\"inBytes\":%uA,"                                                         \
     "\"outBytes\":%uA,"                                                        \
     "\"responses\":{"                                                          \
@@ -148,7 +148,7 @@
 #define NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_UPSTREAM_S "\"upstreamZones\":{"
 #define NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_UPSTREAM "{\"server\":\"%V\","  \
     "\"requestCounter\":%uA,"                                                  \
-    "\"sumRequestTimes\":%uA,"                                                 \
+    "\"requestTime\":%uA,"                                                     \
     "\"inBytes\":%uA,"                                                         \
     "\"outBytes\":%uA,"                                                        \
     "\"responses\":{"                                                          \
@@ -447,7 +447,7 @@ typedef struct {
 typedef struct {
     u_char                                           color;
     ngx_atomic_t                                     stat_request_counter;
-    ngx_atomic_t                                     stat_sum_request_times;
+    ngx_atomic_t                                     stat_request_time;
     ngx_atomic_t                                     stat_in_bytes;
     ngx_atomic_t                                     stat_out_bytes;
     ngx_atomic_t                                     stat_1xx_counter;
@@ -858,9 +858,9 @@ static ngx_http_variable_t  ngx_http_vhost_traffic_status_vars[] = {
       offsetof(ngx_http_vhost_traffic_status_node_t, stat_request_counter),
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
-    { ngx_string("vts_sum_request_times"), NULL,
+    { ngx_string("vts_request_time"), NULL,
       ngx_http_vhost_traffic_status_node_variable,
-      offsetof(ngx_http_vhost_traffic_status_node_t, stat_sum_request_times),
+      offsetof(ngx_http_vhost_traffic_status_node_t, stat_request_time),
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("vts_in_bytes"), NULL,
@@ -2466,7 +2466,7 @@ static void
 ngx_http_vhost_traffic_status_node_zero(ngx_http_vhost_traffic_status_node_t *vtsn)
 {
     vtsn->stat_request_counter = 0;
-    vtsn->stat_sum_request_times = 0;
+    vtsn->stat_request_time = 0;
     vtsn->stat_in_bytes = 0;
     vtsn->stat_out_bytes = 0;
     vtsn->stat_1xx_counter = 0;
@@ -2527,7 +2527,7 @@ ngx_http_vhost_traffic_status_node_init(ngx_http_request_t *r,
 
     vtsn->stat_upstream.type = NGX_HTTP_VHOST_TRAFFIC_STATUS_UPSTREAM_NO;
     vtsn->stat_request_counter = 1;
-    vtsn->stat_sum_request_times = (ngx_atomic_uint_t) ngx_http_get_request_time(r);
+    vtsn->stat_request_time = (ngx_atomic_uint_t) ngx_http_get_request_time(r);
     vtsn->stat_in_bytes = (ngx_atomic_uint_t) r->request_length;
     vtsn->stat_out_bytes = (ngx_atomic_uint_t) r->connection->sent;
 
@@ -2553,7 +2553,8 @@ ngx_http_vhost_traffic_status_node_set(ngx_http_request_t *r,
     ovtsn = *vtsn;
 
     vtsn->stat_request_counter++;
-    vtsn->stat_sum_request_times += (ngx_atomic_uint_t) ngx_http_get_request_time(r);
+    vtsn->stat_request_time *= (1 - 0.3);
+    vtsn->stat_request_time += (0.3 * (ngx_atomic_uint_t) ngx_http_get_request_time(r));
     vtsn->stat_in_bytes += (ngx_atomic_uint_t) r->request_length;
     vtsn->stat_out_bytes += (ngx_atomic_uint_t) r->connection->sent;
 
@@ -3592,7 +3593,7 @@ ngx_http_vhost_traffic_status_display_set_server_node(
 #if (NGX_HTTP_CACHE)
     buf = ngx_sprintf(buf, NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_SERVER,
                       &dst, vtsn->stat_request_counter,
-                      vtsn->stat_sum_request_times,
+                      vtsn->stat_request_time,
                       vtsn->stat_in_bytes,
                       vtsn->stat_out_bytes,
                       vtsn->stat_1xx_counter,
@@ -3628,7 +3629,7 @@ ngx_http_vhost_traffic_status_display_set_server_node(
 #else
     buf = ngx_sprintf(buf, NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_SERVER,
                       key, vtsn->stat_request_counter,
-                      vtsn->stat_sum_request_times,
+                      vtsn->stat_request_time,
                       vtsn->stat_in_bytes,
                       vtsn->stat_out_bytes,
                       vtsn->stat_1xx_counter,
@@ -3857,7 +3858,7 @@ ngx_http_vhost_traffic_status_display_set_upstream_node(ngx_http_request_t *r,
     if (vtsn != NULL) {
         buf = ngx_sprintf(buf, NGX_HTTP_VHOST_TRAFFIC_STATUS_JSON_FMT_UPSTREAM,
                 &key, vtsn->stat_request_counter,
-                vtsn->stat_sum_request_times,
+                vtsn->stat_request_time,
                 vtsn->stat_in_bytes, vtsn->stat_out_bytes,
                 vtsn->stat_1xx_counter, vtsn->stat_2xx_counter,
                 vtsn->stat_3xx_counter, vtsn->stat_4xx_counter,
