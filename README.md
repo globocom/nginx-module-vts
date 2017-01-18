@@ -162,6 +162,7 @@ JSON document contains as follows:
     "serverZones": {
         "...":{
             "requestCounter":...,
+            "avgRequestTimeMsec":...,
             "inBytes":...,
             "outBytes":...,
             "responses":{
@@ -186,6 +187,7 @@ JSON document contains as follows:
         "...":{
             "...":{
                 "requestCounter":...,
+                "avgRequestTimeMsec":...,
                 "inBytes":...,
                 "outBytes":...,
                 "responses":{
@@ -485,6 +487,8 @@ The following status information is provided in the JSON format:
 * serverZones
  * requestCounter
    * The total number of client requests received from clients.
+ * avgRequestTimeMsec
+   * The average of the last 10,000 request processing times.
  * inBytes
    * The total number of bytes received from clients.
  * outBytes
@@ -582,6 +586,8 @@ The following embedded variables are provided:
 
 * **$vts_request_counter**
  * The total number of client requests received from clients.
+* **$vts_avg_request_time**
+ * The average of the last 10,000 request processing times.
 * **$vts_in_bytes**
  * The total number of bytes received from clients.
 * **$vts_out_bytes**
@@ -1003,6 +1009,7 @@ server {
       "country::example.org": {
           "KR": {
               "requestCounter":...,
+              "avgRequestTimeMsec":...,
               "inBytes":...,
               "outBytes":...,
               "responses":{
